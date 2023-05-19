@@ -1,54 +1,55 @@
-struct Tile {
-    up: i8,
-    down: i8,
-    right: i8,
-    left: i8,
-    drawing: &'static str
+pub struct Tile {
+    pub up: i8,
+    pub down: i8,
+    pub right: i8,
+    pub left: i8,
+    pub drawing: &'static str
 }
 
 #[derive(Clone)]
-struct Space {
+struct Space<'a> {
     // a reference to one of the fixed tiles.
-    tile: &'static Tile,
+    tile: &'a Tile,
     collapsed: bool,
-    options: Vec<&'static Tile>
+    options: Vec<&'a Tile>
 }
 
-// -1 quer dizer um tile vazio.
-impl Space {
-    fn new() -> Space {
+impl Space<'_> {
+    fn new(options: Vec<&Tile>) -> Space {
         Space {
-            tile: &EMPTY,
+            tile: options[0],
             collapsed: false,
-            options: vec![&CORNER_BL, &CORNER_BR, &VERTICAL, &HORIZONTAL, /*&CORNER_UL, &CORNER_UR, &CROSS, &TUP, &TDOWN, &TRIGHT, &TLEFT*/]
+            options
         }
     }
 }
 
-struct Matrix {
+pub struct Matrix<'a> {
     cols: usize,
     rows: usize,
     uncollapsed: usize,
-    data: Vec<Space>
+    set_size: usize,
+    data: Vec<Space<'a>>
 }
 
-impl Matrix {
-    fn new(rows: usize, cols: usize) -> Matrix {
+impl Matrix<'_> {
+    pub fn new(rows: usize, cols: usize, options: Vec<&Tile>) -> Matrix {
         Matrix {
-            cols: cols,
-            rows: rows,
+            cols,
+            rows,
             uncollapsed: rows*cols,
-            data: vec![Space::new(); rows*cols]
+            set_size: options.len(),
+            data: vec![Space::new(options); rows*cols]
         }
     }
 
     fn biifurcate_idx(&self, cell: usize) -> (usize, usize) {
-        let col = cell % self.cols;
-        let row = cell / self.cols;
+        let col: usize = cell % self.cols;
+        let row: usize = cell / self.cols;
         (row, col)
     }
     fn uniifiicate_idx(&self, cell: (usize, usize)) -> usize {
-        let index = (cell.0 * self.cols) + cell.1;
+        let index: usize = (cell.0 * self.cols) + cell.1;
         index
     }
 
@@ -56,7 +57,7 @@ impl Matrix {
         let (row, col) = self.biifurcate_idx(cell);
         let center = self.data[cell].tile;
         if row != 0 {
-            let idx = self.uniifiicate_idx((row-1, col));
+            let idx: usize = self.uniifiicate_idx((row-1, col));
             let up = &mut self.data[idx];
             up.options.retain(|x| x.down == center.up);
         }
@@ -92,7 +93,7 @@ impl Matrix {
     }
 
     fn least_entropy(&self) -> Vec<usize> {
-        let mut le = NUM_OPT;
+        let mut le = self.set_size;
         let mut positions = vec![];
         let mut i: usize = 0;
         while i < self.rows*self.cols {
@@ -110,7 +111,7 @@ impl Matrix {
         positions
     }
 
-    fn run(&mut self) {
+    pub fn run(&mut self) {
         loop {
             let candidates = self.least_entropy();
             self.collapse(candidates[rand::random::<usize>() % candidates.len()]);
@@ -120,8 +121,8 @@ impl Matrix {
         }
     }
 
-    fn draw(&self) {
-        let mut count = 0;
+    pub fn draw(&self) {
+        let mut count: usize = 0;
         while count < self.rows * self.cols {
             if count % self.cols == 0 {
                 print!("\n");
